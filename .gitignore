@@ -1,0 +1,10 @@
+*.pyc
+__pycache__
+.pytest_cache
+.tox
+mutex-tree.egg-info
+AUTHORS
+ChangeLog
+.coverage
+reports
+.idea
