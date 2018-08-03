@@ -2,7 +2,7 @@
 __pycache__
 .pytest_cache
 .tox
-mutex-tree.egg-info
+mutextree.egg-info
 AUTHORS
 ChangeLog
 .coverage

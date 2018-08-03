@@ -1,7 +1,7 @@
 image: python:2.7
 
 variables:
-    IMAGE_TAG: $DOCKER_REGISTRY/sophia/mutex-tree
+    IMAGE_TAG: $DOCKER_REGISTRY/sophia/mutextree
 
 stages:
   - lint
