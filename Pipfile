@@ -4,16 +4,15 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
+pbr = "*"
+pytest = "==3.4.2"
+pytest-cov = "*"
+redislite = "*"
+"flake8" = "*"
 
 [packages]
-pytest-cov = "==2.5.1"
 redis = "*"
 python-redis-lock = "*"
-ipdb = "*"
-pytest = "==3.4.2"
-pbr = "*"
-"flake8" = "*"
-redislite = "*"
 
 [requires]
 python_version = "2.7"
