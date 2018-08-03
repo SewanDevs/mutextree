@@ -37,7 +37,7 @@ def test_generate_cumulative_keys(keys, result):
     assert generate_cumulative_keys(keys) == result
 
 
-def test_get_tree_lock():
+def test_get_tree_lock__empty():
     with pytest.raises(ValueError):
         get_tree_lock(None, [])
 
@@ -53,7 +53,7 @@ def test_get_tree_lock():
         (["A", "B"], ["A", "B", "C"]),
     ],
 )
-def test_get_tree_lock_exception(monkeypatch, first_keys, second_keys):
+def test_get_tree_lock__exception(monkeypatch, first_keys, second_keys):
     redis_client = redis.StrictRedis()
     # hint: set more timeout and more expire if you want to debug ;)
     get_tree_lock(redis_client, first_keys, expire=10, timeout=10)
@@ -89,8 +89,6 @@ def test_get_tree_lock__blocked_thread(monkeypatch):
     real_lock_init = redis_lock.Lock.__init__
 
     def blocked_process(monkeypatch, redis_client):
-        count = 0
-
         def lock_with_infinity(*args, **kwargs):
             if getattr(lock_with_infinity, "count", 0) == 0:
                 setattr(lock_with_infinity, "count", 1)
