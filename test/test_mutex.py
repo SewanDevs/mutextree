@@ -8,7 +8,7 @@ import time
 import pytest
 import redislite.patch
 
-from mutex import generate_cumulative_keys, get_tree_lock, MutexException
+from mutextree import generate_cumulative_keys, get_tree_lock, MutexException
 
 
 @pytest.fixture(autouse=True)
