@@ -8,7 +8,7 @@ import time
 import pytest
 import redislite.patch
 
-from mutextree import generate_cumulative_keys, get_tree_lock, MutexException
+from mutextree import tree_lock, TreeLock, MutexException
 
 
 @pytest.fixture(autouse=True)
@@ -33,18 +33,19 @@ def patch_redis():
 @pytest.mark.parametrize(
     "keys, result", [([], []), (["A", "B", "C"], ["A;", "A;B;", "A;B;C;"])]
 )
-def test_generate_cumulative_keys(keys, result):
-    assert generate_cumulative_keys(keys) == result
+def test_generate_cumulative_locks_names(keys, result):
+    assert TreeLock._generate_cumulative_locks_names(keys) == result
 
 
-def test_get_tree_lock__empty():
+def test_tree_lock__empty():
     with pytest.raises(ValueError):
-        get_tree_lock(None, [])
+        TreeLock(None, [])
 
 
 @pytest.mark.parametrize(
     "first_keys, second_keys",
     [
+        (["A"], ["A"]),
         (["A"], ["A", "B"]),
         (["A", "B"], ["A"]),
         (["A", "B", "C"], ["A"]),
@@ -53,23 +54,23 @@ def test_get_tree_lock__empty():
         (["A", "B"], ["A", "B", "C"]),
     ],
 )
-def test_get_tree_lock__exception(monkeypatch, first_keys, second_keys):
+def test_tree_lock__exception(monkeypatch, first_keys, second_keys):
     redis_client = redis.StrictRedis()
     # hint: set more timeout and more expire if you want to debug ;)
-    get_tree_lock(redis_client, first_keys, expire=10, timeout=10)
+    TreeLock(redis_client, first_keys, expire=10, timeout=10).acquire()
     with pytest.raises(MutexException):
-        get_tree_lock(redis_client, second_keys)
+        TreeLock(redis_client, second_keys).acquire()
 
 
-@pytest.mark.parametrize("first_keys, second_keys", [(["A", "B"], ["A", "C"])])
-def test_get_tree_lock(monkeypatch, first_keys, second_keys):
+@pytest.mark.parametrize("first_keys, second_keys", [(["A"], ["B"]), (["A", "B"], ["A", "C"])])
+def test_tree_lock(monkeypatch, first_keys, second_keys):
     redis_client = redis.StrictRedis()
     # hint: set more timeout and more expire if you want to debug ;)
-    get_tree_lock(redis_client, first_keys, expire=10, timeout=10)
-    assert get_tree_lock(redis_client, second_keys)
+    TreeLock(redis_client, first_keys, expire=10, timeout=10).acquire()
+    assert TreeLock(redis_client, second_keys).acquire()
 
 
-def test_get_tree_lock__blocked_thread(monkeypatch):
+def test_tree_lock__blocked_thread(monkeypatch):
     redis_client = redis.StrictRedis()
     lock_th = threading.Lock()
 
@@ -99,13 +100,37 @@ def test_get_tree_lock__blocked_thread(monkeypatch):
                     time.sleep(1)
 
         monkeypatch.setattr("redis_lock.Lock.__init__", lock_with_infinity)
-        get_tree_lock(redis_client, ["A", "B"], expire=600, timeout=600)
+        TreeLock(redis_client, ["A", "B"], expire=600, timeout=600).acquire()
 
     th = threading.Thread(target=blocked_process, args=(monkeypatch, redis_client))
     th.daemon = True  # To ne killed at the end.
     th.start()
     with pytest.raises(MutexException):
+        elapsed_time = 0
         while not is_ready():
             time.sleep(0.1)
+            elapsed_time += 0.1
+            if elapsed_time > 5:  # seconds
+                raise Exception("Too long ! Other thread must be blocked")
         monkeypatch.setattr("redis_lock.Lock.__init__", real_lock_init)
-        get_tree_lock(redis_client, ["A", "C"], timeout=0)
+        TreeLock(redis_client, ["A", "C"], timeout=0).acquire()
+
+
+def test_tree_lock__contextmanager():
+    redis_client = redis.StrictRedis()
+    with TreeLock(redis_client, ["A"], expire=30):
+        with pytest.raises(MutexException):
+            TreeLock(redis_client, ["A"], timeout=0).acquire()
+    assert TreeLock(redis_client, ["A"]).acquire()
+
+
+def test_tree_lock__decorator():
+    redis_client = redis.StrictRedis()
+
+    @tree_lock(redis_client, ["A"], expire=30)
+    def locks_too():
+        with pytest.raises(MutexException):
+            TreeLock(redis_client, ["A"], timeout=0).acquire()
+
+    locks_too()
+    assert TreeLock(redis_client, ["A"]).acquire()
