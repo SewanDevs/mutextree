@@ -55,6 +55,7 @@ def tree_lock(func, locks_backend=None, nodes_names=None, expire=30, id=None, ti
         func: decorated function.
         locks_backend (LocksBackend): a locks backend.
         nodes_names (str list): a list of the nodes names representing the resource in the tree.
+            It is the list of nodes to travel from the root of the tree-like hierarchy of resources.
         expire (int): expiring time of the lock. The lock will be released after this duration
         id (str): id of the lock holder.
         timeout (int): time out of the acquering of the lock.
@@ -76,6 +77,7 @@ class TreeLock(object):
         Args:
             locks_backend (LocksBackend): a locks backend.
             nodes_names (str list): a list of the nodes names representing the resource in the tree.
+                It is the list of nodes to travel from the root of the tree-like hierarchy of resources.
             expire (int): expiring time of the lock (see redis_lock).
             id (str): id of the process (see redis_lock).
             timeout (int): time out of the acquering of the lock (see redis_lock).
@@ -127,7 +129,7 @@ class TreeLock(object):
     @staticmethod
     def _generate_cumulative_locks_names(nodes_names):
         """ Returns the cumulative locks names from a list of nodes names. Cumulative locks names are all the
-        names formed by concatenation of node names in order: for [A,B,C] we will have A, AB and ABC.
+        names formed by concatenation of node names in order: for [A,B,C] we will have A;, A;B; and A;B;C;.
         Args:
             nodes_names (str list): list of nodes names
         Returns

@@ -2,8 +2,9 @@ mutextree
 =======
 |pipeline_status| |coverage| |black|
 
-To protect tree-like resources.
+To protect tree-like resources
 
+Images soon !
 
 Interface targeted to be exactly like `threading.Lock <http://docs.python.org/2/library/threading.html#threading.Lock>`.
 
