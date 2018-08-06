@@ -8,22 +8,60 @@ class MutexException(Exception):
     pass
 
 
+class LocksBackend(object):
+    """ Abstract base class for locks backends. """
+
+    def get_lock(self, lock_name, expire, id):
+        """ Return a lock with the same interface as threading.Lock.
+        Args:
+            lock_name (str): name of the lock.
+            expire (int): expiring time of the lock. The lock will be released after this duration.
+            id (str): id of the lock holder.
+        Returns:
+            Object with acquire() and release() method (same interface as threading.Lock)
+        """
+        pass
+
+    def check_locks_beginning_with(self, name):
+        """ Verify that all locks begining with name are available.
+        No guaranties that they will all still be available when getting them.
+        Args:
+            name (str): a beginning of locks names.
+        Returns:
+            list of locks names beginning with name.
+        """
+        pass
+
+
+class RedisLockBackend(LocksBackend):
+    def __init__(self, redis_client):
+        self.redis_client = redis_client
+
+    def get_lock(self, lock_name, expire, id):
+        return redis_lock.Lock(self.redis_client, lock_name, expire=expire, id=id)
+
+    def check_locks_beginning_with(self, name):
+        found_keys = self.redis_client.keys("lock:" + name + "*")
+        # remove "lock:"
+        return [found_key.replace("lock:", "") for found_key in found_keys]
+
+
 @decorator
-def tree_lock(func, redis_client=None, nodes_names=None, expire=30, id=None, timeout=0, *args, **kwargs):
+def tree_lock(func, locks_backend=None, nodes_names=None, expire=30, id=None, timeout=0, *args, **kwargs):
     """ Decorator to lock a resource in a tree like hierarchy. Lock is acquired before the decorated function
     and released after, the function being successfull or not.
     Preserve method signature.
     Args:
         func: decorated function.
-        redis_client (redis.StrictRedis): a redis client
+        locks_backend (LocksBackend): a locks backend.
         nodes_names (str list): a list of the nodes names representing the resource in the tree.
-        expire (int): expiring time of the lock (see redis_lock).
-        id (str): id of the process (see redis_lock).
-        timeout (int): time out of the acquering of the lock (see redis_lock).
+        expire (int): expiring time of the lock. The lock will be released after this duration
+        id (str): id of the lock holder.
+        timeout (int): time out of the acquering of the lock.
             Non bloking if timeout is null.
         *args, **kwargs: args for the decorated function
     """
-    with TreeLock(redis_client, nodes_names, expire, id, timeout):
+    with TreeLock(locks_backend, nodes_names, expire, id, timeout):
         return func(*args, **kwargs)
 
 
@@ -33,19 +71,19 @@ class TreeLock(object):
     Interface targeted to be exactly like `threading.Lock <http://docs.python.org/2/library/threading.html#threading.Lock>`
     """
 
-    def __init__(self, redis_client, nodes_names, expire=30, id=None, timeout=0):
+    def __init__(self, locks_backend, nodes_names, expire=30, id=None, timeout=0):
         """ Initialise the tree lock, nothing is done during initialisation
         Args:
-            redis_client (redis.StrictRedis): a redis client
+            locks_backend (LocksBackend): a locks backend.
             nodes_names (str list): a list of the nodes names representing the resource in the tree.
             expire (int): expiring time of the lock (see redis_lock).
             id (str): id of the process (see redis_lock).
             timeout (int): time out of the acquering of the lock (see redis_lock).
                 Non bloking if timeout is null.
         """
-        if not redis_client:
-            raise ValueError("redis_client is mandatory")
-        self.redis_client = redis_client
+        if not locks_backend:
+            raise ValueError("locks_backend is mandatory")
+        self.locks_backend = locks_backend
         if not nodes_names:
             raise ValueError("nodes_names cannot be empty")
         self.nodes_names = nodes_names
@@ -106,10 +144,7 @@ class TreeLock(object):
         lock_timeout so that there are still locked when the real lock is acquired.
         Locks are automatically released if there is an exception.
         Args:
-            redis_client (redis.StrictRedis): a redis client
             parent_locks_names (str list): list of lock names to acquire in order
-            lock_timeout (int): timeout of the real lock.
-            id (str): id of the process (see redis_lock)
         Returns:
             list of all parent locks. They are already acquired.
         Raises:
@@ -123,7 +158,7 @@ class TreeLock(object):
                 expire_time = self.timeout + 5
                 # Maybe we could wait a bit before raising exception to see if lock is released and take some
                 # time from the timeout.
-                lock = redis_lock.Lock(self.redis_client, key, expire=expire_time, id=self.id)
+                lock = self.locks_backend.get_lock(key, expire=expire_time, id=self.id)
                 if lock.acquire(blocking=False):
                     parent_locks.append(lock)
                 else:
@@ -143,7 +178,7 @@ class TreeLock(object):
         Raises:
             MutexException if any child lock is not available
         """
-        found_keys = self.redis_client.keys("lock:" + lock_name + "*")
+        found_keys = self.locks_backend.check_locks_beginning_with(lock_name)
         if found_keys:
             raise MutexException(
                 "Lock not available because {} are locked".format(found_keys)
@@ -154,7 +189,7 @@ class TreeLock(object):
         Args:
             lock_name (str): lock name.
         """
-        real_lock = redis_lock.Lock(self.redis_client, lock_name, self.expire, self.id)
+        real_lock = self.locks_backend.get_lock(lock_name, expire=self.expire, id=self.id)
         blocking = self.timeout != 0
         timeout = self.timeout or None
         real_lock.acquire(blocking=blocking, timeout=timeout)

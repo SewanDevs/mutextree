@@ -8,7 +8,7 @@ import time
 import pytest
 import redislite.patch
 
-from mutextree import tree_lock, TreeLock, MutexException
+from mutextree import tree_lock, TreeLock, MutexException, RedisLockBackend
 
 
 @pytest.fixture(autouse=True)
@@ -23,11 +23,17 @@ def dont_enforce_strict(monkeypatch):
     monkeypatch.setattr("redis_lock.Lock.__init__", new_init)
 
 
-@pytest.fixture(autouse=True, scope="function")
+@pytest.fixture(scope="function")
 def patch_redis():
     redislite.patch.patch_redis_StrictRedis()
     yield
     redislite.patch.unpatch_redis_StrictRedis()
+
+
+@pytest.fixture(scope="function")
+def redis_lock_back_end(patch_redis):
+    redis_client = redis.StrictRedis()
+    return RedisLockBackend(redis_client)
 
 
 @pytest.mark.parametrize(
@@ -54,24 +60,21 @@ def test_tree_lock__empty():
         (["A", "B"], ["A", "B", "C"]),
     ],
 )
-def test_tree_lock__exception(monkeypatch, first_keys, second_keys):
-    redis_client = redis.StrictRedis()
+def test_tree_lock__exception(redis_lock_back_end, first_keys, second_keys):
     # hint: set more timeout and more expire if you want to debug ;)
-    TreeLock(redis_client, first_keys, expire=10, timeout=10).acquire()
+    TreeLock(redis_lock_back_end, first_keys, expire=10, timeout=10).acquire()
     with pytest.raises(MutexException):
-        TreeLock(redis_client, second_keys).acquire()
+        TreeLock(redis_lock_back_end, second_keys).acquire()
 
 
 @pytest.mark.parametrize("first_keys, second_keys", [(["A"], ["B"]), (["A", "B"], ["A", "C"])])
-def test_tree_lock(monkeypatch, first_keys, second_keys):
-    redis_client = redis.StrictRedis()
+def test_tree_lock(redis_lock_back_end, first_keys, second_keys):
     # hint: set more timeout and more expire if you want to debug ;)
-    TreeLock(redis_client, first_keys, expire=10, timeout=10).acquire()
-    assert TreeLock(redis_client, second_keys).acquire()
+    TreeLock(redis_lock_back_end, first_keys, expire=10, timeout=10).acquire()
+    assert TreeLock(redis_lock_back_end, second_keys).acquire()
 
 
-def test_tree_lock__blocked_thread(monkeypatch):
-    redis_client = redis.StrictRedis()
+def test_tree_lock__blocked_thread(monkeypatch, redis_lock_back_end):
     lock_th = threading.Lock()
 
     ready = {}
@@ -89,7 +92,7 @@ def test_tree_lock__blocked_thread(monkeypatch):
 
     real_lock_init = redis_lock.Lock.__init__
 
-    def blocked_process(monkeypatch, redis_client):
+    def blocked_process(monkeypatch, redis_lock_back_end):
         def lock_with_infinity(*args, **kwargs):
             if getattr(lock_with_infinity, "count", 0) == 0:
                 setattr(lock_with_infinity, "count", 1)
@@ -100,9 +103,9 @@ def test_tree_lock__blocked_thread(monkeypatch):
                     time.sleep(1)
 
         monkeypatch.setattr("redis_lock.Lock.__init__", lock_with_infinity)
-        TreeLock(redis_client, ["A", "B"], expire=600, timeout=600).acquire()
+        TreeLock(redis_lock_back_end, ["A", "B"], expire=600, timeout=600).acquire()
 
-    th = threading.Thread(target=blocked_process, args=(monkeypatch, redis_client))
+    th = threading.Thread(target=blocked_process, args=(monkeypatch, redis_lock_back_end))
     th.daemon = True  # To ne killed at the end.
     th.start()
     with pytest.raises(MutexException):
@@ -113,24 +116,21 @@ def test_tree_lock__blocked_thread(monkeypatch):
             if elapsed_time > 5:  # seconds
                 raise Exception("Too long ! Other thread must be blocked")
         monkeypatch.setattr("redis_lock.Lock.__init__", real_lock_init)
-        TreeLock(redis_client, ["A", "C"], timeout=0).acquire()
+        TreeLock(redis_lock_back_end, ["A", "C"], timeout=0).acquire()
 
 
-def test_tree_lock__contextmanager():
-    redis_client = redis.StrictRedis()
-    with TreeLock(redis_client, ["A"], expire=30):
+def test_tree_lock__contextmanager(redis_lock_back_end):
+    with TreeLock(redis_lock_back_end, ["A"], expire=30):
         with pytest.raises(MutexException):
-            TreeLock(redis_client, ["A"], timeout=0).acquire()
-    assert TreeLock(redis_client, ["A"]).acquire()
+            TreeLock(redis_lock_back_end, ["A"], timeout=0).acquire()
+    assert TreeLock(redis_lock_back_end, ["A"]).acquire()
 
 
-def test_tree_lock__decorator():
-    redis_client = redis.StrictRedis()
-
-    @tree_lock(redis_client, ["A"], expire=30)
+def test_tree_lock__decorator(redis_lock_back_end):
+    @tree_lock(redis_lock_back_end, ["A"], expire=30)
     def locks_too():
         with pytest.raises(MutexException):
-            TreeLock(redis_client, ["A"], timeout=0).acquire()
+            TreeLock(redis_lock_back_end, ["A"], timeout=0).acquire()
 
     locks_too()
-    assert TreeLock(redis_client, ["A"]).acquire()
+    assert TreeLock(redis_lock_back_end, ["A"]).acquire()
