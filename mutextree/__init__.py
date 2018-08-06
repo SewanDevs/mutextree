@@ -47,7 +47,16 @@ class RedisLockBackend(LocksBackend):
 
 
 @decorator
-def tree_lock(func, locks_backend=None, nodes_names=None, expire=30, id=None, timeout=0, *args, **kwargs):
+def tree_lock(
+    func,
+    locks_backend=None,
+    nodes_names=None,
+    expire=30,
+    id=None,
+    timeout=0,
+    *args,
+    **kwargs
+):
     """ Decorator to lock a resource in a tree like hierarchy. Lock is acquired before the decorated function
     and released after, the function being successfull or not.
     Preserve method signature.
@@ -69,7 +78,7 @@ def tree_lock(func, locks_backend=None, nodes_names=None, expire=30, id=None, ti
 class TreeLock(object):
     """ Acquire a lock for a resource in a tree-like hierarchy represented by the names of the nodes.
     Checks that no resource above or under in the tree is already locked.
-    Interface targeted to be exactly like `threading.Lock <http://docs.python.org/2/library/threading.html#threading.Lock>`
+    Interface targeted to be exactly like threading.Lock.
     """
 
     def __init__(self, locks_backend, nodes_names, expire=30, id=None, timeout=0):
@@ -95,21 +104,26 @@ class TreeLock(object):
         self.real_lock = None
 
     def acquire(self):
-        """ Acquire the lock. All the checks are done: no resource above or under in the tree is already locked.
+        """ Acquire the lock. All the checks are done: no resource above or under in the tree is already
+        locked.
         Returns:
             self
         Raises:
             MutexException in case of error.
         """
         cumulative_locks_names = self._generate_cumulative_locks_names(self.nodes_names)
-        parent_locks_names, lock_name = cumulative_locks_names[:-1], cumulative_locks_names[-1]
+        parent_locks_names, lock_name = (
+            cumulative_locks_names[:-1],
+            cumulative_locks_names[-1],
+        )
         parent_locks = self._acquire_parent_locks(parent_locks_names)
         try:
-            # Maybe we could wait a bit to see if the child lock is released and take some time from the timeout
+            # Maybe we could wait a bit to see if the child lock is released and take some time from the
+            # timeout
             self._check_no_childs_lock(lock_name)
             # Maybe we could compute the already elapsed time to subtract from timeout
-            # It would reduce the chances that we don't have the parent locks anymore when have the acquire this
-            # one.
+            # It would reduce the chances that we don't have the parent locks anymore when have the acquire
+            # this one.
             self.real_lock = self._acquire_real_lock(lock_name)
             return self
         finally:
@@ -191,7 +205,9 @@ class TreeLock(object):
         Args:
             lock_name (str): lock name.
         """
-        real_lock = self.locks_backend.get_lock(lock_name, expire=self.expire, id=self.id)
+        real_lock = self.locks_backend.get_lock(
+            lock_name, expire=self.expire, id=self.id
+        )
         blocking = self.timeout != 0
         timeout = self.timeout or None
         real_lock.acquire(blocking=blocking, timeout=timeout)

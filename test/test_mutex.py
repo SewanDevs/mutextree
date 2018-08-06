@@ -67,7 +67,9 @@ def test_tree_lock__exception(redis_lock_back_end, first_keys, second_keys):
         TreeLock(redis_lock_back_end, second_keys).acquire()
 
 
-@pytest.mark.parametrize("first_keys, second_keys", [(["A"], ["B"]), (["A", "B"], ["A", "C"])])
+@pytest.mark.parametrize(
+    "first_keys, second_keys", [(["A"], ["B"]), (["A", "B"], ["A", "C"])]
+)
 def test_tree_lock(redis_lock_back_end, first_keys, second_keys):
     # hint: set more timeout and more expire if you want to debug ;)
     TreeLock(redis_lock_back_end, first_keys, expire=10, timeout=10).acquire()
@@ -105,7 +107,9 @@ def test_tree_lock__blocked_thread(monkeypatch, redis_lock_back_end):
         monkeypatch.setattr("redis_lock.Lock.__init__", lock_with_infinity)
         TreeLock(redis_lock_back_end, ["A", "B"], expire=600, timeout=600).acquire()
 
-    th = threading.Thread(target=blocked_process, args=(monkeypatch, redis_lock_back_end))
+    th = threading.Thread(
+        target=blocked_process, args=(monkeypatch, redis_lock_back_end)
+    )
     th.daemon = True  # To ne killed at the end.
     th.start()
     with pytest.raises(MutexException):
