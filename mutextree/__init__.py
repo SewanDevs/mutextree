@@ -51,6 +51,7 @@ class RedisLockBackend(LocksBackend):
         # so we force an id ourselves if there is none.
         if id is None:
             id = str(uuid.uuid4())
+        id = id.encode("utf-8")
         return redis_lock.Lock(self.redis_client, lock_name, expire=expire, id=id)
 
     def check_locks_beginning_with(self, name):
