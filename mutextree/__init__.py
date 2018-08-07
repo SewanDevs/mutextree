@@ -34,6 +34,14 @@ class LocksBackend(object):
 
 
 class RedisLockBackend(LocksBackend):
+    """ Use redis and python-redis-lock as backend for locks.
+    The redis_client has to be configured to return strings (decode_responses=True).
+
+    Warning:
+        It uses the KEYS command that has a complexity of O(n). Performance may be bad if there is too many
+        locks at the same time.
+    """
+
     def __init__(self, redis_client):
         self.redis_client = redis_client
 
@@ -41,6 +49,7 @@ class RedisLockBackend(LocksBackend):
         return redis_lock.Lock(self.redis_client, lock_name, expire=expire, id=id)
 
     def check_locks_beginning_with(self, name):
+        # warning. keys is O(n) so perf may be bad if there is really too much locks at the same time.
         found_keys = self.redis_client.keys("lock:" + name + "*")
         # remove "lock:"
         return [found_key.replace("lock:", "") for found_key in found_keys]

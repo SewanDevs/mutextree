@@ -32,7 +32,7 @@ def patch_redis():
 
 @pytest.fixture(scope="function")
 def redis_lock_back_end(patch_redis):
-    redis_client = redis.StrictRedis()
+    redis_client = redis.StrictRedis(decode_responses=True)
     return RedisLockBackend(redis_client)
 
 

@@ -9,6 +9,7 @@ pytest = "==3.4.2"
 pytest-cov = "*"
 redislite = "*"
 "flake8" = "*"
+tox = "*"
 
 [packages]
 redis = "*"
