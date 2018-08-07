@@ -51,13 +51,13 @@ def test_tree_lock__empty():
 @pytest.mark.parametrize(
     "first_keys, second_keys",
     [
-        #(["A"], ["A"]),
+        (["A"], ["A"]),
         (["A"], ["A", "B"]),
-        # (["A", "B"], ["A"]),
-        # (["A", "B", "C"], ["A"]),
-        # (["A", "B", "C"], ["A", "B"]),
-        # (["A"], ["A", "B", "C"]),
-        # (["A", "B"], ["A", "B", "C"]),
+        (["A", "B"], ["A"]),
+        (["A", "B", "C"], ["A"]),
+        (["A", "B", "C"], ["A", "B"]),
+        (["A"], ["A", "B", "C"]),
+        (["A", "B"], ["A", "B", "C"]),
     ],
 )
 def test_tree_lock__exception(redis_lock_back_end, first_keys, second_keys):
