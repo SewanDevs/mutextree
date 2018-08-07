@@ -157,7 +157,7 @@ class TreeLock(object):
 
     @staticmethod
     def _generate_cumulative_locks_names(nodes_names):
-        """ Returns the cumulative locks names from a list of nodes names. Cumulative locks names are all the
+        """ Return the cumulative locks names from a list of nodes names. Cumulative locks names are all the
         names formed by concatenation of node names in order: for [A,B,C] we will have A;, A;B; and A;B;C;.
         Args:
             nodes_names (str list): list of nodes names
@@ -203,7 +203,7 @@ class TreeLock(object):
             raise
 
     def _check_no_childs_lock(self, lock_name):
-        """ Checks that all child locks are available.
+        """ Check that all child locks are available.
         Args:
             lock_name (str): name of the real lock
         Raises:
