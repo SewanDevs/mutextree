@@ -25,7 +25,7 @@ class LocksBackend(object):
 
     def check_locks_beginning_with(self, name):
         """ Verify that all locks begining with name are available.
-        No guaranties that they will all still be available when getting them.
+        No guaranty that they will all still be available when getting them.
         Args:
             name (str): a beginning of locks names.
         Returns:
