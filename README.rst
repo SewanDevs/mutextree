@@ -6,12 +6,12 @@ To protect tree-like resources:
 
 .. image:: https://gitlab.priv.sewan.fr/sophia/mutex-tree/raw/master/images/mutextree-voc.png
 
-Node have to be represented by its fully qualified name.
-For instance, node D is represented by [A, B, D]:
+Nodes have to be represented by their fully qualified name.
+For instance, the node D is represented by [A, B, D]:
 
 .. image :: https://gitlab.priv.sewan.fr/sophia/mutex-tree/raw/master/images/mutextree-qualified-name.png
 
-The algorithme to lock a node is the following:
+The algorithm to lock a node is the following:
 
 1. We lock the parent nodes in order:
 
