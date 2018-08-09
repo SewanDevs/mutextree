@@ -8,7 +8,13 @@ import time
 import pytest
 import redislite.patch
 
-from mutextree import tree_lock, TreeLock, MutexException, RedisLockBackend
+from mutextree import (
+    tree_lock,
+    TreeLock,
+    MutexException,
+    RedisLockBackend,
+    LocksBackend,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -43,9 +49,14 @@ def test_generate_cumulative_locks_names(keys, result):
     assert TreeLock._generate_cumulative_locks_names(keys) == result
 
 
+def test_tree_lock__no_back_end():
+    with pytest.raises(ValueError):
+        TreeLock(None, ["A"])
+
+
 def test_tree_lock__empty():
     with pytest.raises(ValueError):
-        TreeLock(None, [])
+        TreeLock(LocksBackend(), [])
 
 
 @pytest.mark.parametrize(
