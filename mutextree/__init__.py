@@ -199,7 +199,8 @@ class TreeLock(object):
         Raises:
             NotLockedMutexException if the lock is not acquired or it already expired.
         """
-        self.locks_backend.release_lock(self.real_lock)
+        if self.real_lock:
+            self.locks_backend.release_lock(self.real_lock)
 
     def refresh(self, expire=None):
         """ Refresh the lock expire delay. The expiration delay of the lock will not depend
@@ -210,8 +211,9 @@ class TreeLock(object):
         Raises:
             NotLockedMutexException if the lock is not acquired or it already expired.
         """
-        expire = expire or self.expire
-        self.locks_backend.refresh_lock(self.real_lock, expire=expire)
+        if self.real_lock:
+            expire = expire or self.expire
+            self.locks_backend.refresh_lock(self.real_lock, expire=expire)
 
     def __enter__(self):
         self.acquire()

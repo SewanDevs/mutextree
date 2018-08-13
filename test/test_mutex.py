@@ -212,12 +212,29 @@ def test_tree_lock__decorator(redis_lock_back_end):
 def test_release():
     fake_locks_backend = MagicMock()
     tl = TreeLock(locks_backend=fake_locks_backend, nodes_names=["A"])
+    tl.real_lock = MagicMock()
     tl.release()
-    assert fake_locks_backend.release_lock.is_called
+    assert fake_locks_backend.release_lock.called
 
 
 def test_refresh():
     fake_locks_backend = MagicMock()
     tl = TreeLock(locks_backend=fake_locks_backend, nodes_names=["A"])
+    tl.real_lock = MagicMock()
     tl.refresh()
-    assert fake_locks_backend.refresh_lock.is_called
+    assert fake_locks_backend.refresh_lock.called
+
+
+def test_release_not_acquired():
+    fake_locks_backend = MagicMock()
+    fake_locks_backend.release_lock
+    tl = TreeLock(locks_backend=fake_locks_backend, nodes_names=["A"])
+    tl.release()
+    assert not fake_locks_backend.release_lock.called
+
+
+def test_refresh_not_acquired():
+    fake_locks_backend = MagicMock()
+    tl = TreeLock(locks_backend=fake_locks_backend, nodes_names=["A"])
+    tl.refresh()
+    assert not fake_locks_backend.refresh_lock.called
