@@ -140,6 +140,7 @@ class TreeLock(object):
             # It would reduce the chances that we don't have the parent locks anymore when have the acquire
             # this one.
             self.real_lock = self._acquire_real_lock(lock_name)
+            self.id = self.real_lock.id
             return self
         finally:
             for lock in parent_locks:
