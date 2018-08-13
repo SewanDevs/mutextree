@@ -9,15 +9,19 @@ class MutexException(Exception):
     pass
 
 
+class NotLockedMutexException(MutexException):
+    pass
+
+
 class LocksBackend(object):
     """ Abstract base class for locks backends. """
 
-    def get_lock(self, lock_name, expire, id):
+    def get_lock(self, lock_name, expire, holder_id):
         """ Return a lock with the same interface as threading.Lock.
         Args:
             lock_name (str): name of the lock.
             expire (int): expiring time of the lock. The lock will be released after this duration.
-            id (str): id of the lock holder.
+            holder_id (str): id of the lock holder.
         Returns:
             Object with acquire() and release() method (same interface as threading.Lock)
         """
@@ -30,6 +34,35 @@ class LocksBackend(object):
             name (str): a beginning of locks names.
         Returns:
             list of locks names beginning with name.
+        """
+        pass
+
+    def acquire_lock(self, lock, blocking, timeout):
+        """ Acquire the lock.
+        Args:
+            lock: the lock to acquire.
+            blocking (bool): if false, the function will not pause the process if the lock is not available.
+            timeout (int): delay the process will be pauses if the lock is not available.
+        """
+        pass
+
+    def release_lock(self, lock):
+        """ Release the lock.
+        Args:
+            lock: the lock to release.
+        Raises:
+            NotLockedMutexException if the lock is not acquired or it already expired.
+        """
+        pass
+
+    def refresh_lock(self, lock, expire):
+        """ Refresh the lock. The expiration delay of the lock will not depend
+        on the current remaining time but will be set to exactly expire.
+        Args:
+            lock: the lock to release.
+            expire: new delay before lock expiration.
+        Raises:
+            NotLockedMutexException if the lock is not acquired or it already expired.
         """
         pass
 
@@ -59,6 +92,21 @@ class RedisLockBackend(LocksBackend):
         found_keys = self.redis_client.keys("lock:" + name + "*")
         # remove "lock:"
         return [found_key.replace("lock:", "") for found_key in found_keys]
+
+    def acquire_lock(self, lock, blocking, timeout):
+        lock.acquire(blocking=blocking, timeout=timeout)
+
+    def release_lock(self, lock):
+        try:
+            lock.release()
+        except redis_lock.NotAcquired:
+            raise NotLockedMutexException("Lock is not acquired or already expired")
+
+    def refresh_lock(self, lock, expire):
+        try:
+            lock.extend(expire=expire)
+        except redis_lock.NotAcquired:
+            raise NotLockedMutexException("Lock is not acquired or already expired")
 
 
 @decorator
@@ -147,7 +195,23 @@ class TreeLock(object):
                 lock.release()
 
     def release(self):
-        self.real_lock.release()
+        """ Release the lock. If the lock is not acquired or it already expired, it will throw an exception
+        Raises:
+            NotLockedMutexException if the lock is not acquired or it already expired.
+        """
+        self.locks_backend.release_lock(self.real_lock)
+
+    def refresh(self, expire=None):
+        """ Refresh the lock expire delay. The expiration delay of the lock will not depend
+        on the current remaining time but will be set to exactly expire. If expire is none, the original value
+        will be used.
+        Arguments:
+            expire (int): new expiration delay. The orinal one will be used if it is none.
+        Raises:
+            NotLockedMutexException if the lock is not acquired or it already expired.
+        """
+        expire = expire or self.expire
+        self.locks_backend.refresh_lock(self.real_lock, expire=expire)
 
     def __enter__(self):
         self.acquire()
@@ -226,5 +290,5 @@ class TreeLock(object):
         )
         blocking = self.timeout != 0
         timeout = self.timeout or None
-        real_lock.acquire(blocking=blocking, timeout=timeout)
+        self.locks_backend.acquire_lock(real_lock, blocking=blocking, timeout=timeout)
         return real_lock

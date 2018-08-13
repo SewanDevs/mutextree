@@ -10,6 +10,7 @@ pytest-cov = "*"
 redislite = "*"
 "flake8" = "*"
 tox = "*"
+mock = "*"
 
 [packages]
 redis = "*"

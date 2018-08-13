@@ -81,7 +81,7 @@ You can use it as a context manager or a decorator:
         # release will be automatically called
 
 
-Lock has the same basic interface as threading.Lock() with some more methods: acquire, release, refresh, check.
+Lock has the same basic interface as threading.Lock() with some more methods: acquire, release, refresh.
 
 Installation
 ------------
