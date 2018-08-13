@@ -39,6 +39,50 @@ Interface targeted to be exactly like threading.Lock_.
 The mutex tree is actually designed to use redis and python-redis-lock but the locking backend may be changed.
 
 
+Usage
+------------
+
+To use mutextree with the redis locks back end, simply instanciate a redis client and create your lock.
+The redis client should be strict and decode responses itself.
+
+.. code-block:: python
+    import redis
+    from mutextree import RedisLockBackend, TreeLock
+
+    redis_client = redis.StrictRedis(decode_responses=True)
+    redis_lock_backend = RedisLockBackend(redis_client)
+    lock = TreeLock(redis_lock_backend, ["nodeA"], expire=10, timeout=10, id=1)
+    try:
+        lock.acquire()
+        # do things
+    finally:
+        lock.release()
+
+
+You can use it as a context manager or a decorator:
+
+.. code-block:: python
+    import redis
+    from mutextree import RedisLockBackend, TreeLock, tree_lock
+
+    redis_client = redis.StrictRedis(decode_responses=True)
+    redis_lock_backend = RedisLockBackend(redis_client)
+
+    with TreeLock(redis_lock_backend, ["nodeA"], expire=10):
+        # do things
+        pass
+        # release will be automatically called
+
+    # Or with a decorator
+    @tree_lock(redis_lock_backend, ["nodeA"], expire=10)
+    def protected_function():
+        # do things
+        pass
+        # release will be automatically called
+
+
+Lock has the same basic interface as threading.Lock() with some more methods: acquire, release, refresh, check.
+
 Installation
 ------------
 .. code-block:: console
