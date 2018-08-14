@@ -28,32 +28,37 @@ def test_LocksBackend():
     lb.refresh_lock(None, 10)
 
 
-class testRedisBackEnd(object):
+class TestRedisBackEnd(object):
+    @staticmethod
     def test_get_lock(monkeypatch):
         backend = RedisLockBackend(None)
-        fake_lock = MagicMock()
-        monkeypatch.setattr("redis_lock.Lock.__init__", fake_lock)
-        backend.get_lock(["A"], 10)
-        assert fake_lock.is_called
+        fake_lock_init = MagicMock(return_value=None)
+        monkeypatch.setattr("redis_lock.Lock.__init__", fake_lock_init)
+        backend.get_lock(["A"], 10, bytes(1))
+        assert fake_lock_init.is_called
 
+    @staticmethod
     def test_check_locks_beginning_with():
         redis_client = MagicMock()
         backend = RedisLockBackend(redis_client)
         backend.check_locks_beginning_with("A")
         assert redis_client.keys.is_called
 
+    @staticmethod
     def test_acquire_lock():
         backend = RedisLockBackend(None)
         fake_lock = MagicMock()
         backend.acquire_lock(fake_lock, False, 10)
         assert fake_lock.acquire.is_called
 
+    @staticmethod
     def test_release_lock():
         backend = RedisLockBackend(None)
         fake_lock = MagicMock()
         backend.release_lock(fake_lock)
         assert fake_lock.acquire.is_called
 
+    @staticmethod
     def test_release_lock_exception():
         backend = RedisLockBackend(None)
         fake_lock = MagicMock()
@@ -61,12 +66,14 @@ class testRedisBackEnd(object):
         with pytest.raises(NotLockedMutexException):
             backend.release_lock(fake_lock)
 
+    @staticmethod
     def test_refresh_lock():
         backend = RedisLockBackend(None)
         fake_lock = MagicMock()
         backend.refresh_lock(fake_lock, 10)
         assert fake_lock.acquire.is_called
 
+    @staticmethod
     def test_refresh_lock_exception():
         backend = RedisLockBackend(None)
         fake_lock = MagicMock()
