@@ -21,7 +21,7 @@ from mutextree import (
 
 def test_LocksBackend():
     lb = LocksBackend()
-    lb.get_lock(["A"], 10, bytes(1))
+    lb.get_lock(["A"], 10, "1")
     lb.check_locks_beginning_with("A")
     lb.acquire_lock(None, False, 0)
     lb.release_lock(None)
@@ -34,7 +34,7 @@ class TestRedisBackEnd(object):
         backend = RedisLockBackend(None)
         fake_lock_init = MagicMock(return_value=None)
         monkeypatch.setattr("redis_lock.Lock.__init__", fake_lock_init)
-        backend.get_lock(["A"], 10, bytes(1))
+        backend.get_lock(["A"], 10, "1")
         assert fake_lock_init.is_called
 
     @staticmethod
