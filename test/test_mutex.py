@@ -234,14 +234,15 @@ def test_refresh():
 
 def test_release_not_acquired():
     fake_locks_backend = MagicMock()
-    fake_locks_backend.release_lock
     tl = TreeLock(locks_backend=fake_locks_backend, nodes_names=["A"])
-    tl.release()
+    with pytest.raises(NotLockedMutexException):
+        tl.release()
     assert not fake_locks_backend.release_lock.called
 
 
 def test_refresh_not_acquired():
     fake_locks_backend = MagicMock()
     tl = TreeLock(locks_backend=fake_locks_backend, nodes_names=["A"])
-    tl.refresh()
+    with pytest.raises(NotLockedMutexException):
+        tl.refresh()
     assert not fake_locks_backend.refresh_lock.called

@@ -205,6 +205,8 @@ class TreeLock(object):
         """
         if self.real_lock:
             self.locks_backend.release_lock(self.real_lock)
+        else:
+            raise NotLockedMutexException("Lock is not acquired.")
 
     def refresh(self, expire=None):
         """ Refresh the lock expire delay. The expiration delay of the lock will not depend
@@ -218,6 +220,8 @@ class TreeLock(object):
         if self.real_lock:
             expire = expire or self.expire
             self.locks_backend.refresh_lock(self.real_lock, expire=expire)
+        else:
+            raise NotLockedMutexException("Lock is not acquired.")
 
     def __enter__(self):
         self.acquire()
