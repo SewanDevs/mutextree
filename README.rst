@@ -46,6 +46,7 @@ To use mutextree with the redis locks back end, simply instanciate a redis clien
 The redis client should be strict and decode responses itself.
 
 .. code-block:: python
+
     import redis
     from mutextree import RedisLockBackend, TreeLock
 
@@ -62,6 +63,7 @@ The redis client should be strict and decode responses itself.
 You can use it as a context manager or a decorator:
 
 .. code-block:: python
+
     import redis
     from mutextree import RedisLockBackend, TreeLock, tree_lock
 
