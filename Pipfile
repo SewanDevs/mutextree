@@ -5,12 +5,13 @@ name = "pypi"
 
 [dev-packages]
 pbr = "*"
-pytest = "==3.4.2"
+pytest = "*"
 pytest-cov = "*"
 redislite = "*"
 "flake8" = "*"
 tox = "*"
 mock = "*"
+pipenv-to-requirements = "*"
 
 [packages]
 redis = "*"
